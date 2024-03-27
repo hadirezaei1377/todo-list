@@ -3,9 +3,9 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"todo-list/db"
 
 	"github.com/gorilla/mux"
-	"github.com/your-username/todo-list/db"
 )
 
 type Todo struct {
