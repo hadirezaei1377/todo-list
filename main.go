@@ -4,8 +4,17 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 )
+
+type User struct {
+	ID       int
+	email    string
+	password string
+}
+
+var userStorage []User
 
 func main() {
 	fmt.Println("welcome to your app!")
@@ -14,6 +23,8 @@ func main() {
 	flag.Parse()
 
 	runCommand(*command)
+
+	fmt.Println("user storage:", userStorage)
 }
 
 func runCommand(command string) {
@@ -86,6 +97,14 @@ func registerUser() {
 	id = email
 
 	fmt.Println("user:", id, email, password)
+
+	user := User{
+		ID:       rand.Int(),
+		email:    email,
+		password: password,
+	}
+
+	userStorage = append(userStorage, user)
 
 }
 
