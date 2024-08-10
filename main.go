@@ -32,5 +32,35 @@ func main() {
 
 		fmt.Println("task:", name, category, duedate)
 
+	} else if *command == "create category" {
+		var title, color string
+
+		fmt.Println("please enter the category title")
+		scanner.Scan()
+		title = scanner.Text()
+
+		fmt.Println("please enter the category color")
+		scanner.Scan()
+		color = scanner.Text()
+
+		fmt.Println("category:", title, color)
+
+	} else if *command == "register-user" {
+
+		var id, email, password string
+
+		fmt.Println("please enter the category email")
+		scanner.Scan()
+		email = scanner.Text()
+
+		fmt.Println("please enter the category password")
+		scanner.Scan()
+		password = scanner.Text()
+
+		fmt.Println("category:", email, password)
+
+		id = email
+
+		fmt.Println("user:", id, email, password)
 	}
 }
