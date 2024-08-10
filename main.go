@@ -64,3 +64,9 @@ func main() {
 		fmt.Println("user:", id, email, password)
 	}
 }
+
+func runCommand()     {}
+func createTask()     {}
+func createCategory() {}
+func registerUser()   {}
+func login()          {}
