@@ -22,9 +22,16 @@ func main() {
 	command := flag.String("command", "no command", "command creates a new task from cli")
 	flag.Parse()
 
-	runCommand(*command)
+	for {
+		runCommand(*command)
 
-	fmt.Println("user storage:", userStorage)
+		scanner := bufio.NewScanner(os.Stdin)
+		fmt.Println("please enter another command")
+		scanner.Scan()
+		*command = scanner.Text()
+	}
+
+	fmt.Printf("userStorage: %+v\n", userStorage)
 }
 
 func runCommand(command string) {
@@ -37,6 +44,8 @@ func runCommand(command string) {
 		registerUser()
 	case "login":
 		login()
+	case "exit":
+		os.Exit(0)
 	default:
 		fmt.Println("command is not valid!", command)
 	}
