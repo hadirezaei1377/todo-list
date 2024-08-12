@@ -57,6 +57,8 @@ func runCommand(command string) {
 		createCategory()
 	case "register-user":
 		registerUser()
+	case "list-task":
+		ListTask()
 	case "login":
 		login()
 	case "exit":
@@ -187,4 +189,12 @@ func login() {
 
 	fmt.Println("user:", id, email, password)
 
+}
+
+func ListTask() {
+	for _, task := range taskStorage {
+		if task.UserID == uint(authenticatedUser.ID) {
+			fmt.Println(task)
+		}
+	}
 }
