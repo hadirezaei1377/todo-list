@@ -25,35 +25,6 @@ func main() {
 
 	if *command != "register-user" || *command != "exit" {
 
-		// get the email and password from the client
-		// if there is a user record with corresponding data, allow user to continue
-		fmt.Println("you must be logged in first")
-		scanner := bufio.NewScanner(os.Stdin)
-		fmt.Println("please enter the email")
-		scanner.Scan()
-		email := scanner.Text()
-
-		fmt.Println("please enter the password")
-		scanner.Scan()
-		password := scanner.Text()
-
-		notFound := true
-		for _, user := range userStorage {
-			if user.Email == email {
-				if user.Password == password {
-					notFound = true
-					fmt.Println("you are logged in.")
-				} else {
-					fmt.Println("password is incorrect.")
-				}
-			}
-		}
-
-		if notFound {
-			fmt.Println("the email or password is not correct")
-			return
-		}
-
 		for {
 			runCommand(*command)
 
@@ -167,5 +138,28 @@ func login() {
 	scanner.Scan()
 	password = scanner.Text()
 
+	// get the email and password from the client
+	// if there is a user record with corresponding data, allow user to continue
+	fmt.Println("you must be logged in first")
+
+	notFound := true
+
+	if notFound {
+		fmt.Println("the email or password is not correct")
+		return
+	}
+
+	for _, user := range userStorage {
+		if user.Email == email {
+			if user.Password == password {
+				notFound = false
+				fmt.Println("you are logged in.")
+			} else {
+				fmt.Println("password is incorrect.")
+			}
+		}
+	}
+
 	fmt.Println("user:", id, email, password)
+
 }
