@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"time"
 )
 
 type User struct {
@@ -15,8 +16,22 @@ type User struct {
 	Password string
 }
 
+type Task struct {
+	ID       int
+	Title    string
+	Duedate  time.Time
+	Category string
+	IsDone   bool
+	UserID   uint
+}
+
+func (u User) Print() {
+	fmt.Println("user:", u.ID, u.Email, u.Name)
+}
+
 var userStorage []User
 var authenticatedUser *User
+var taskStorage []Task
 
 func main() {
 	fmt.Println("welcome to your app!")
@@ -53,6 +68,10 @@ func runCommand(command string) {
 
 func createTask() {
 
+	if authenticatedUser != nil {
+		authenticatedUser.Print()
+	}
+
 	scanner := bufio.NewScanner(os.Stdin)
 	var name, category, duedate string
 
@@ -68,7 +87,15 @@ func createTask() {
 	scanner.Scan()
 	duedate = scanner.Text()
 
-	fmt.Println("task:", name, category, duedate)
+	task := Task{
+
+		ID:       len(taskStorage) + 1,
+		Title:    title,
+		Duedate:  duedate,
+		Category: category,
+		IsDone:   false,
+		UserID:   uint(authenticatedUser.ID),
+	}
 
 }
 
