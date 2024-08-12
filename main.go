@@ -10,8 +10,9 @@ import (
 
 type User struct {
 	ID       int
-	email    string
-	password string
+	Name     string
+	Email    string
+	Password string
 }
 
 var userStorage []User
@@ -22,16 +23,48 @@ func main() {
 	command := flag.String("command", "no command", "command creates a new task from cli")
 	flag.Parse()
 
-	for {
-		runCommand(*command)
+	if *command != "register-user" || *command != "exit" {
 
+		// get the email and password from the client
+		// if there is a user record with corresponding data, allow user to continue
+		fmt.Println("you must be logged in first")
 		scanner := bufio.NewScanner(os.Stdin)
-		fmt.Println("please enter another command")
+		fmt.Println("please enter the email")
 		scanner.Scan()
-		*command = scanner.Text()
+		email := scanner.Text()
+
+		fmt.Println("please enter the password")
+		scanner.Scan()
+		password := scanner.Text()
+
+		notFound := true
+		for _, user := range userStorage {
+			if user.Email == email {
+				if user.Password == password {
+					notFound = true
+					fmt.Println("you are logged in.")
+				} else {
+					fmt.Println("password is incorrect.")
+				}
+			}
+		}
+
+		if notFound {
+			fmt.Println("the email or password is not correct")
+			return
+		}
+
+		for {
+			runCommand(*command)
+
+			scanner := bufio.NewScanner(os.Stdin)
+			fmt.Println("please enter another command")
+			scanner.Scan()
+			*command = scanner.Text()
+		}
+
 	}
 
-	fmt.Printf("userStorage: %+v\n", userStorage)
 }
 
 func runCommand(command string) {
@@ -91,11 +124,15 @@ func createCategory() {
 func registerUser() {
 	scanner := bufio.NewScanner(os.Stdin)
 
-	var id, email, password string
+	var id, name, email, password string
 
 	fmt.Println("please enter the email")
 	scanner.Scan()
 	email = scanner.Text()
+
+	fmt.Println("please enter the name")
+	scanner.Scan()
+	name = scanner.Text()
 
 	fmt.Println("please enter the password")
 	scanner.Scan()
@@ -109,8 +146,9 @@ func registerUser() {
 
 	user := User{
 		ID:       rand.Int(),
-		email:    email,
-		password: password,
+		Name:     name,
+		Email:    email,
+		Password: password,
 	}
 
 	userStorage = append(userStorage, user)
