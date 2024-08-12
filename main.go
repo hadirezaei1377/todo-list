@@ -16,6 +16,7 @@ type User struct {
 }
 
 var userStorage []User
+var authenticatedUser *User
 
 func main() {
 	fmt.Println("welcome to your app!")
@@ -23,22 +24,17 @@ func main() {
 	command := flag.String("command", "no command", "command creates a new task from cli")
 	flag.Parse()
 
-	if *command != "register-user" || *command != "exit" {
-
-		for {
-			runCommand(*command)
-
-			scanner := bufio.NewScanner(os.Stdin)
-			fmt.Println("please enter another command")
-			scanner.Scan()
-			*command = scanner.Text()
-		}
-
-	}
+	runCommand(*command)
 
 }
 
 func runCommand(command string) {
+
+	if command != "register-user" && command != "exit" && authenticatedUser == nil {
+		login()
+
+	}
+
 	switch command {
 	case "create-task":
 		createTask()
@@ -153,10 +149,12 @@ func login() {
 		if user.Email == email {
 			if user.Password == password {
 				notFound = false
+				authenticatedUser = &user
 				fmt.Println("you are logged in.")
 			} else {
 				fmt.Println("password is incorrect.")
 			}
+			break
 		}
 	}
 
