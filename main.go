@@ -190,6 +190,33 @@ func registerUser() {
 
 	userStorage = append(userStorage, user)
 
+	// save user data in user.txt file, go create file
+	path := "user.txt"
+	_, err := os.Stat(path)
+	if err != nil {
+		fmt.Println("path doesnt exist", err)
+		file, err := os.Create(path)
+
+		return
+		if err != nil {
+			fmt.Println("cant create user.txt file", err)
+		} else {
+			file, err = os.Open(path)
+
+			if err != nil {
+				fmt.Println("path doesnt exist", err)
+
+				return
+
+			}
+
+		}
+
+		file.Write([]byte("new user record"))
+
+		file.Close()
+
+	}
 }
 
 func login() {
