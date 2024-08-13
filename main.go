@@ -201,6 +201,18 @@ func registerUser() {
 		if err != nil {
 			fmt.Println("cant create user.txt file", err)
 		} else {
+
+			file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY)
+			if err != nil {
+				fmt.Println("cant create or open file", err)
+
+				return
+
+			}
+
+			data := fmt.Sprintf("id: %d, email: %s, name: %s, password: %s\n", user.ID, user.Email, user.Name,
+				user.Password)
+
 			file, err = os.Open(path)
 
 			if err != nil {
