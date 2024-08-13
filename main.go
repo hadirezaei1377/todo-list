@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -17,12 +18,12 @@ type User struct {
 }
 
 type Task struct {
-	ID       int
-	Title    string
-	Duedate  time.Time
-	Category string
-	IsDone   bool
-	UserID   uint
+	ID         int
+	Title      string
+	Duedate    time.Time
+	CategoryID int
+	IsDone     bool
+	UserID     uint
 }
 
 type Category struct {
@@ -89,9 +90,31 @@ func createTask() {
 	scanner.Scan()
 	name = scanner.Text()
 
-	fmt.Println("please enter the task category")
+	fmt.Println("please enter the task category id")
 	scanner.Scan()
 	category = scanner.Text()
+
+	categoryID, err := strconv.Atoi(category)
+	if err != nil {
+		fmt.Println("category-id is not valid int, %v\n", err)
+
+		return
+	}
+
+	isFound := false
+
+	for _, c := range categoryStorage {
+		if c.ID == categoryID && c.UserID == uint(authenticatedUser.ID) {
+
+			break
+		}
+	}
+
+	if !isFound {
+		fmt.Println("category-id is not found, %v\n")
+
+		return
+	}
 
 	fmt.Println("please enter the task duedate")
 	scanner.Scan()
