@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -38,11 +39,17 @@ var authenticatedUser *User
 var taskStorage []Task
 var categoryStorage []Category
 
+const UserStoragepath = "user.txt"
+
 func (u User) Print() {
 	fmt.Println("user:", u.ID, u.Email, u.Name)
 }
 
 func main() {
+
+	// load user storage from file
+	loadUserStorageFromFile()
+
 	fmt.Println("welcome to your app!")
 
 	command := flag.String("command", "no command", "command creates a new task from cli")
@@ -191,7 +198,6 @@ func registerUser() {
 	userStorage = append(userStorage, user)
 
 	// save user data in user.txt file, go create file
-	path := "user.txt"
 	_, err := os.Stat(path)
 	if err != nil {
 		fmt.Println("path doesnt exist", err)
@@ -202,7 +208,7 @@ func registerUser() {
 			fmt.Println("cant create user.txt file", err)
 		} else {
 
-			file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY)
+			file, err := os.OpenFile(UserStoragepath, os.O_CREATE|os.O_APPEND|os.O_WRONLY)
 			if err != nil {
 				fmt.Println("cant create or open file", err)
 
@@ -276,5 +282,40 @@ func ListTask() {
 		if task.UserID == uint(authenticatedUser.ID) {
 			fmt.Println(task)
 		}
+	}
+}
+
+func loadUserStorageFromFile() {
+
+	file, err := os.Open(UserStoragepath)
+
+	if err != nil {
+		fmt.Println("cant open the file", err)
+
+		return
+
+	}
+
+	var data = make([]byte, 10240)
+	_, err = file.Read(data)
+	if err != nil {
+		fmt.Println("cant read from the file", err)
+
+		return
+
+	}
+
+	var dataStr = string(data)
+
+	userSlice := strings.Split(dataStr, "\n")
+	fmt.Println("userSlice:", len(userSlice))
+	for index, user := range userSlice {
+		if user == "" {
+
+			continue
+		}
+
+		fmt.Println("line of file:", index, "data:", data)
+
 	}
 }
