@@ -25,13 +25,21 @@ type Task struct {
 	UserID   uint
 }
 
-func (u User) Print() {
-	fmt.Println("user:", u.ID, u.Email, u.Name)
+type Category struct {
+	ID     int
+	Title  string
+	color  string
+	UserID uint
 }
 
 var userStorage []User
 var authenticatedUser *User
 var taskStorage []Task
+var categoryStorage []Category
+
+func (u User) Print() {
+	fmt.Println("user:", u.ID, u.Email, u.Name)
+}
 
 func main() {
 	fmt.Println("welcome to your app!")
@@ -115,6 +123,16 @@ func createCategory() {
 	color = scanner.Text()
 
 	fmt.Println("category:", title, color)
+
+	category := Category{
+		ID:     len(categoryStorage) + 1,
+		Title:  title,
+		Color:  color,
+		UserID: authenticatedUser.ID,
+	}
+
+	categoryStorage = append(categoryStorage, category)
+
 }
 
 func registerUser() {
