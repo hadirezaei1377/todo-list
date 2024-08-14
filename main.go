@@ -38,8 +38,11 @@ var userStorage []User
 var authenticatedUser *User
 var taskStorage []Task
 var categoryStorage []Category
+var serializationMode string
 
 const UserStoragepath = "user.txt"
+const Defalse = "defalse"
+const json = "json"
 
 func (u User) Print() {
 	fmt.Println("user:", u.ID, u.Email, u.Name)
@@ -52,8 +55,19 @@ func main() {
 
 	fmt.Println("welcome to your app!")
 
+	serilizeMode := flag.String("serialize mode", "defalse", "serialization mode to write data to file")
+
 	command := flag.String("command", "no command", "command creates a new task from cli")
 	flag.Parse()
+
+	switch *serilizeMode {
+	case "defalse":
+		serializationMode = Defalse
+	default:
+
+		serializationMode = json
+
+	}
 
 	runCommand(*command)
 
