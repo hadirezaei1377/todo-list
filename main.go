@@ -317,5 +317,41 @@ func loadUserStorageFromFile() {
 
 		fmt.Println("line of file:", index, "data:", data)
 
+		var user = User{}
+
+		userFields := strings.Split(user, ",")
+
+		for _, field := range userFields {
+			fmt.Println(field)
+
+			values := strings.Split(field, ": ")
+			fieldName := strings.ReplaceAll(values[0], " ", "")
+			fieldValue := values[1]
+
+			switch fieldName {
+			case "id":
+				id, err := strconv.Atoi(fieldValue)
+
+				if err != nil {
+					fmt.Println(err)
+
+					return
+
+				}
+
+				user.ID = fieldValue
+			case "name":
+				user.Name = fieldValue
+			case "email":
+				user.Email = fieldValue
+			case "password":
+
+				user.Password = fieldValue
+
+			}
+
+		}
+
+		fmt.Println("user", user)
 	}
 }
