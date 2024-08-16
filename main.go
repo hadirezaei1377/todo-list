@@ -2,10 +2,10 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -13,7 +13,7 @@ import (
 )
 
 type User struct {
-	ID       int
+	ID       uint
 	Name     string
 	Email    string
 	Password string
@@ -22,7 +22,7 @@ type User struct {
 type Task struct {
 	ID         int
 	Title      string
-	Duedate    time.Time
+	DueDate    time.Time
 	CategoryID int
 	IsDone     bool
 	UserID     uint
@@ -31,53 +31,58 @@ type Task struct {
 type Category struct {
 	ID     int
 	Title  string
-	color  string
+	Color  string
 	UserID uint
 }
 
-var userStorage []User
-var authenticatedUser *User
-var taskStorage []Task
-var categoryStorage []Category
+var (
+	userStorage     []User
+	taskStorage     []Task
+	categoryStorage []Category
 
-const UserStoragepath = "user.txt"
-const Defalse = "defalse"
-const json = "json"
+	authenticatedUser *User
+	serializationMode string
+)
 
-func (u User) Print() {
-	fmt.Println("user:", u.ID, u.Email, u.Name)
-}
+const (
+	userStoragePath         = "user.txt"
+	CustomSerializationMode = "custom"
+	JsonSerializationMode   = "json"
+)
 
 func main() {
 
-	// load user storage from file
-	loadUserStorageFromFile(*serializationMode)
-
-	fmt.Println("welcome to your app!")
-
-	serilizeMode := flag.String("serialize mode", "defalse", "serialization mode to write data to file")
-
-	command := flag.String("command", "no command", "command creates a new task from cli")
+	serializeMode := flag.String("serialize-mode", CustomSerializationMode, "serialization mode to write data to file")
+	command := flag.String("command", "no command", "command to run")
 	flag.Parse()
 
-	switch *serilizeMode {
-	case "defalse":
-		serializationMode = Defalse
+	// load data from user storage file
+	loadUserStorageFromFile(*serializeMode)
+
+	fmt.Println("Hello to TODO app")
+
+	switch *serializeMode {
+	case CustomSerializationMode:
+		serializationMode = CustomSerializationMode
 	default:
-
-		serializationMode = json
-
+		serializationMode = JsonSerializationMode
 	}
 
-	runCommand(*command)
-
+	for {
+		runCommand(*command)
+		scanner := bufio.NewScanner(os.Stdin)
+		fmt.Println("please enter another command")
+		scanner.Scan()
+		*command = scanner.Text()
+	}
 }
 
 func runCommand(command string) {
-
 	if command != "register-user" && command != "exit" && authenticatedUser == nil {
 		login()
-
+		if authenticatedUser == nil {
+			return
+		}
 	}
 
 	switch command {
@@ -87,70 +92,65 @@ func runCommand(command string) {
 		createCategory()
 	case "register-user":
 		registerUser()
-	case "list-task":
-		ListTask()
+	case "list-tasks":
+		listTasks()
 	case "login":
 		login()
 	case "exit":
 		os.Exit(0)
 	default:
-		fmt.Println("command is not valid!", command)
+		fmt.Println("command is not valid", command)
 	}
 }
 
 func createTask() {
-
-	if authenticatedUser != nil {
-		authenticatedUser.Print()
-	}
-
 	scanner := bufio.NewScanner(os.Stdin)
-	var name, category, duedate string
+	var title, dueDate, category string
 
 	fmt.Println("please enter the task title")
 	scanner.Scan()
-	name = scanner.Text()
+	title = scanner.Text()
 
-	fmt.Println("please enter the task category id")
+	fmt.Println("please enter the task category ID")
 	scanner.Scan()
 	category = scanner.Text()
 
 	categoryID, err := strconv.Atoi(category)
 	if err != nil {
-		fmt.Println("category-id is not valid int, %v\n", err)
+		fmt.Printf("Category ID is not a valid integer, %v\n", err)
 
 		return
 	}
 
 	isFound := false
-
 	for _, c := range categoryStorage {
-		if c.ID == categoryID && c.UserID == uint(authenticatedUser.ID) {
+		if c.ID == categoryID && c.UserID == authenticatedUser.ID {
+			isFound = true
 
 			break
 		}
 	}
 
 	if !isFound {
-		fmt.Println("category-id is not found, %v\n")
+		fmt.Printf("Category ID is not found.\n")
 
 		return
 	}
 
-	fmt.Println("please enter the task duedate")
+	fmt.Println("please enter the task due date")
 	scanner.Scan()
-	duedate = scanner.Text()
+	dueDate = scanner.Text()
 
 	task := Task{
-
-		ID:       len(taskStorage) + 1,
-		Title:    title,
-		Duedate:  duedate,
-		Category: category,
-		IsDone:   false,
-		UserID:   uint(authenticatedUser.ID),
+		ID:         len(taskStorage) + 1,
+		Title:      title,
+		DueDate:    dueDate,
+		CategoryID: categoryID,
+		IsDone:     false,
+		UserID:     authenticatedUser.ID,
 	}
 
+	taskStorage = append(taskStorage, task)
 }
 
 func createCategory() {
@@ -166,7 +166,7 @@ func createCategory() {
 	scanner.Scan()
 	color = scanner.Text()
 
-	fmt.Println("category:", title, color)
+	fmt.Println("category", title, color)
 
 	category := Category{
 		ID:     len(categoryStorage) + 1,
@@ -176,7 +176,6 @@ func createCategory() {
 	}
 
 	categoryStorage = append(categoryStorage, category)
-
 }
 
 func registerUser() {
@@ -184,26 +183,24 @@ func registerUser() {
 
 	var id, name, email, password string
 
-	fmt.Println("please enter the email")
-	scanner.Scan()
-	email = scanner.Text()
-
-	fmt.Println("please enter the name")
+	fmt.Println("please enter the user name")
 	scanner.Scan()
 	name = scanner.Text()
 
-	fmt.Println("please enter the password")
+	fmt.Println("please enter the user email")
+	scanner.Scan()
+	email = scanner.Text()
+
+	fmt.Println("please enter the user password")
 	scanner.Scan()
 	password = scanner.Text()
 
-	fmt.Println("user:", email, password)
-
 	id = email
 
-	fmt.Println("user:", id, email, password)
+	fmt.Println("user", id, name, email, password)
 
 	user := User{
-		ID:       rand.Int(),
+		ID:       uint(len(userStorage) + 1),
 		Name:     name,
 		Email:    email,
 		Password: password,
@@ -211,202 +208,171 @@ func registerUser() {
 
 	userStorage = append(userStorage, user)
 
-	WriteUserToFile(user)
+	writeUserToFile(user)
 
 }
 
 func login() {
-	scanner := bufio.NewScanner(os.Stdin)
-	var id, email, password string
+	fmt.Println("login process")
 
-	fmt.Println("please enter the email")
+	scanner := bufio.NewScanner(os.Stdin)
+
+	var email, password string
+
+	fmt.Println("please enter the user email")
 	scanner.Scan()
 	email = scanner.Text()
 
-	fmt.Println("please enter the password")
+	fmt.Println("please enter the user password")
 	scanner.Scan()
 	password = scanner.Text()
 
 	// get the email and password from the client
-	// if there is a user record with corresponding data, allow user to continue
-	fmt.Println("you must be logged in first")
-
-	notFound := true
-
-	if notFound {
-		fmt.Println("the email or password is not correct")
-		return
-	}
 
 	for _, user := range userStorage {
-		if user.Email == email {
-			if user.Password == password {
-				notFound = false
-				authenticatedUser = &user
-				fmt.Println("you are logged in.")
-			} else {
-				fmt.Println("password is incorrect.")
-			}
+		if user.Email == email && user.Password == password {
+			authenticatedUser = &user
+
 			break
 		}
 	}
 
-	fmt.Println("user:", id, email, password)
+	if authenticatedUser == nil {
+		fmt.Println("The email or Password is not correct.")
+	}
 
 }
 
-func ListTask() {
+func listTasks() {
 	for _, task := range taskStorage {
-		if task.UserID == uint(authenticatedUser.ID) {
+		if task.UserID == authenticatedUser.ID {
 			fmt.Println(task)
 		}
 	}
 }
 
 func loadUserStorageFromFile(serializationMode string) {
-
-	file, err := os.Open(UserStoragepath)
-
+	file, err := os.Open(userStoragePath)
 	if err != nil {
-		fmt.Println("cant open the file", err)
-
-		return
-
+		fmt.Println("can't open the file", err)
 	}
 
-	var data = make([]byte, 10240)
-	_, err = file.Read(data)
-	if err != nil {
-		fmt.Println("cant read from the file", err)
+	var data = make([]byte, 1024)
+	_, oErr := file.Read(data)
+	if oErr != nil {
+		fmt.Println("can't read from the file", oErr)
 
 		return
-
 	}
 
 	var dataStr = string(data)
 
 	userSlice := strings.Split(dataStr, "\n")
-	fmt.Println("userSlice:", len(userSlice))
-	for _, user := range userSlice {
-		var userStruct = User{}
-		switch serializationMode {
-		case Defalse:
-			var dErr error
-			userStruct, dErr = deseializeFromDefalse(user)
 
+	for _, u := range userSlice {
+		var userStruct = User{}
+
+		switch serializationMode {
+		case CustomSerializationMode:
+			var dErr error
+			userStruct, dErr = deserializationFromCustom(u)
 			if dErr != nil {
-				fmt.Println("cant deserialize user record to user struct", err)
+				fmt.Println("Can't deserialize user record to user struct", dErr)
 
 				return
 			}
-		case json:
-
-			uErr := json.Unmarshal([]byte(user), &userStruct)
-
+		case JsonSerializationMode:
+			if u[0] != '{' && u[len(u)-1] != '}' {
+				continue
+			}
+			uErr := json.Unmarshal([]byte(u), &userStruct)
 			if uErr != nil {
-				fmt.Println("cant deserialize user record to user struct with json mode", uErr)
+				fmt.Println("Can't deserialize user record to user struct with json mode.", uErr)
 
 				return
-
 			}
 		}
-		fmt.Println("unmarshalled user", userStruct)
-		userStorage := append(userStorage, userStruct)
 
+		userStorage = append(userStorage, userStruct)
 	}
-
 }
 
-func WriteUserToFile(user User) {
-
+func writeUserToFile(user User) {
 	var file *os.File
 
-	file, err := os.OpenFile(UserStoragepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(userStoragePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Println("cant create or open file", err)
+		fmt.Println("can't create or open file.", err)
 
 		return
-
 	}
 	defer file.Close()
 
 	var data []byte
-
-	if serializationMode == Defalse {
-		data = []byte(fmt.Sprintf("id: %d, email: %s, name: %s, password: %s\n", user.ID, user.Email, user.Name,
-			user.Password))
-
-	} else if serializationMode == json {
-
-		data, err = json.Marshal(user)
-
+	// serialize the user struct/object
+	if serializationMode == CustomSerializationMode {
+		data = []byte(fmt.Sprintf("id: %d, name: %s, email: %s, password: %s\n", user.ID, user.Name, user.Email, user.Password))
+	} else if serializationMode == JsonSerializationMode {
+		// json
+		var jErr error
+		data, jErr = json.Marshal(user)
 		if err != nil {
-			fmt.Println("cant marshal user struct to json", err)
+			fmt.Println("Can't marshal user struct to json.", jErr)
 
 			return
 		}
 
+		data = append(data, []byte("\n")...)
+
 	} else {
-		fmt.Println("invalid serializatiion mode")
+		fmt.Println("Invalid serialization mode.")
 
 		return
 	}
 
-	var b = data
-
-	numberOfWrittenBytes, wErr := file.Write(b)
+	numberOfWrittenBytes, wErr := file.Write(data)
 	if wErr != nil {
-		fmt.Println("cant write to the file %v\n ", wErr)
+		fmt.Println("can't write to the file %v\n", wErr)
 
 		return
-
 	}
 
-	fmt.Println("numberOfWrittenBytes: ", numberOfWrittenBytes)
-
+	fmt.Println("numberOfWrittenBytes", numberOfWrittenBytes)
 }
 
-func deseializeFromDefalse(userStr string) (User, error) {
+func deserializationFromCustom(userStr string) (User, error) {
 	if userStr == "" {
-
-		return User{}, errors.New("user string is empty")
+		return User{}, errors.New("User string is empty.")
 	}
-
-	fmt.Println("line of file:", index, "data:", data)
 
 	var user = User{}
 
 	userFields := strings.Split(userStr, ",")
-
 	for _, field := range userFields {
-		fmt.Println(field)
-
 		values := strings.Split(field, ": ")
+		if len(values) != 2 {
+			fmt.Println("record is not valid", len(values))
+
+			continue
+		}
 		fieldName := strings.ReplaceAll(values[0], " ", "")
 		fieldValue := values[1]
 
 		switch fieldName {
 		case "id":
 			id, err := strconv.Atoi(fieldValue)
-
 			if err != nil {
-				fmt.Println(err)
-
-				return User{}, errors.New("str conv err")
-
+				return User{}, errors.New("strconv error.")
 			}
-
-			user.ID = fieldValue
+			user.ID = id
 		case "name":
 			user.Name = fieldValue
 		case "email":
 			user.Email = fieldValue
 		case "password":
-
 			user.Password = fieldValue
-
 		}
-
 	}
+
 	return user, nil
 }
