@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -38,7 +39,6 @@ var userStorage []User
 var authenticatedUser *User
 var taskStorage []Task
 var categoryStorage []Category
-var serializationMode string
 
 const UserStoragepath = "user.txt"
 const Defalse = "defalse"
@@ -263,7 +263,7 @@ func ListTask() {
 	}
 }
 
-func loadUserStorageFromFile() {
+func loadUserStorageFromFile(serializationMode string) {
 
 	file, err := os.Open(UserStoragepath)
 
@@ -287,51 +287,34 @@ func loadUserStorageFromFile() {
 
 	userSlice := strings.Split(dataStr, "\n")
 	fmt.Println("userSlice:", len(userSlice))
-	for index, user := range userSlice {
-		if user == "" {
+	for _, user := range userSlice {
+		var userStruct = User{}
+		switch serializationMode {
+		case Defalse:
+			var dErr error
+			userStruct, dErr = deseializeFromDefalse(user)
 
-			continue
-		}
+			if dErr != nil {
+				fmt.Println("cant deserialize user record to user struct", err)
 
-		fmt.Println("line of file:", index, "data:", data)
+				return
+			}
+		case json:
 
-		var user = User{}
+			uErr := json.Unmarshal([]byte(user), &userStruct)
 
-		userFields := strings.Split(user, ",")
+			if uErr != nil {
+				fmt.Println("cant deserialize user record to user struct with json mode", uErr)
 
-		for _, field := range userFields {
-			fmt.Println(field)
-
-			values := strings.Split(field, ": ")
-			fieldName := strings.ReplaceAll(values[0], " ", "")
-			fieldValue := values[1]
-
-			switch fieldName {
-			case "id":
-				id, err := strconv.Atoi(fieldValue)
-
-				if err != nil {
-					fmt.Println(err)
-
-					return
-
-				}
-
-				user.ID = fieldValue
-			case "name":
-				user.Name = fieldValue
-			case "email":
-				user.Email = fieldValue
-			case "password":
-
-				user.Password = fieldValue
+				return
 
 			}
-
 		}
+		fmt.Println("unmarshalled user", userStruct)
+		userStorage := append(userStorage, userStruct)
 
-		fmt.Println("user", user)
 	}
+
 }
 
 func WriteUserToFile(user User) {
@@ -347,10 +330,29 @@ func WriteUserToFile(user User) {
 	}
 	defer file.Close()
 
-	data := fmt.Sprintf("id: %d, email: %s, name: %s, password: %s\n", user.ID, user.Email, user.Name,
-		user.Password)
+	var data []byte
 
-	var b = []byte(data)
+	if serializationMode == Defalse {
+		data = []byte(fmt.Sprintf("id: %d, email: %s, name: %s, password: %s\n", user.ID, user.Email, user.Name,
+			user.Password))
+
+	} else if serializationMode == json {
+
+		data, err = json.Marshal(user)
+
+		if err != nil {
+			fmt.Println("cant marshal user struct to json", err)
+
+			return
+		}
+
+	} else {
+		fmt.Println("invalid serializatiion mode")
+
+		return
+	}
+
+	var b = data
 
 	numberOfWrittenBytes, wErr := file.Write(b)
 	if wErr != nil {
@@ -362,4 +364,49 @@ func WriteUserToFile(user User) {
 
 	fmt.Println("numberOfWrittenBytes: ", numberOfWrittenBytes)
 
+}
+
+func deseializeFromDefalse(userStr string) (User, error) {
+	if userStr == "" {
+
+		return User{}, errors.New("user string is empty")
+	}
+
+	fmt.Println("line of file:", index, "data:", data)
+
+	var user = User{}
+
+	userFields := strings.Split(userStr, ",")
+
+	for _, field := range userFields {
+		fmt.Println(field)
+
+		values := strings.Split(field, ": ")
+		fieldName := strings.ReplaceAll(values[0], " ", "")
+		fieldValue := values[1]
+
+		switch fieldName {
+		case "id":
+			id, err := strconv.Atoi(fieldValue)
+
+			if err != nil {
+				fmt.Println(err)
+
+				return User{}, errors.New("str conv err")
+
+			}
+
+			user.ID = fieldValue
+		case "name":
+			user.Name = fieldValue
+		case "email":
+			user.Email = fieldValue
+		case "password":
+
+			user.Password = fieldValue
+
+		}
+
+	}
+	return user, nil
 }
