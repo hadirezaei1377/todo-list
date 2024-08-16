@@ -51,7 +51,7 @@ func (u User) Print() {
 func main() {
 
 	// load user storage from file
-	loadUserStorageFromFile()
+	loadUserStorageFromFile(*serializationMode)
 
 	fmt.Println("welcome to your app!")
 
