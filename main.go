@@ -11,11 +11,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type User struct {
-	ID       uint
+	ID       int
 	Name     string
 	Email    string
 	Password string
@@ -24,17 +23,17 @@ type User struct {
 type Task struct {
 	ID         int
 	Title      string
-	DueDate    time.Time
+	DueDate    string
 	CategoryID int
 	IsDone     bool
-	UserID     uint
+	UserID     int
 }
 
 type Category struct {
 	ID     int
 	Title  string
 	Color  string
-	UserID uint
+	UserID int
 }
 
 var (
@@ -52,6 +51,10 @@ const (
 	JsonSerializationMode   = "json"
 )
 
+var userFileStore = fileStore{
+	filePath: userStoragePath,
+}
+
 func main() {
 
 	serializeMode := flag.String("serialize-mode", CustomSerializationMode, "serialization mode to write data to file")
@@ -59,7 +62,8 @@ func main() {
 	flag.Parse()
 
 	// load data from user storage file
-	loadUserStorageFromFile(*serializeMode)
+
+	loadUserFromStorage(userFileStore, *serializeMode)
 
 	fmt.Println("Hello to TODO app")
 
@@ -93,7 +97,7 @@ func runCommand(command string) {
 	case "create-category":
 		createCategory()
 	case "register-user":
-		registerUser()
+		registerUser(userFileStore)
 	case "list-tasks":
 		listTasks()
 	case "login":
@@ -107,7 +111,7 @@ func runCommand(command string) {
 
 func createTask() {
 	scanner := bufio.NewScanner(os.Stdin)
-	var title, dueDate, category string
+	var title, duedate, category string
 
 	fmt.Println("please enter the task title")
 	scanner.Scan()
@@ -141,12 +145,12 @@ func createTask() {
 
 	fmt.Println("please enter the task due date")
 	scanner.Scan()
-	dueDate = scanner.Text()
+	duedate = scanner.Text()
 
 	task := Task{
 		ID:         len(taskStorage) + 1,
 		Title:      title,
-		DueDate:    dueDate,
+		DueDate:    duedate,
 		CategoryID: categoryID,
 		IsDone:     false,
 		UserID:     authenticatedUser.ID,
@@ -180,7 +184,15 @@ func createCategory() {
 	categoryStorage = append(categoryStorage, category)
 }
 
-func registerUser() {
+type userWriteStore interface {
+	Save(u User)
+}
+
+type userReadStore interface {
+	Load(serializationMode string) []User
+}
+
+func registerUser(store userWriteStore) {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	var id, name, email, password string
@@ -202,7 +214,7 @@ func registerUser() {
 	fmt.Println("user", id, name, email, password)
 
 	user := User{
-		ID:       uint(len(userStorage) + 1),
+		ID:       len(userStorage) + 1,
 		Name:     name,
 		Email:    email,
 		Password: hashThePassword(password),
@@ -210,8 +222,8 @@ func registerUser() {
 
 	userStorage = append(userStorage, user)
 
-	writeUserToFile(user)
-
+	//writeUserToFile(user)
+	store.Save(user)
 }
 
 func login() {
@@ -253,56 +265,16 @@ func listTasks() {
 	}
 }
 
-func loadUserStorageFromFile(serializationMode string) {
-	file, err := os.Open(userStoragePath)
-	if err != nil {
-		fmt.Println("can't open the file", err)
-	}
+func loadUserFromStorage(store userReadStore, serializationMode string) {
+	users := store.Load(serializationMode)
 
-	var data = make([]byte, 1024)
-	_, oErr := file.Read(data)
-	if oErr != nil {
-		fmt.Println("can't read from the file", oErr)
-
-		return
-	}
-
-	var dataStr = string(data)
-
-	userSlice := strings.Split(dataStr, "\n")
-
-	for _, u := range userSlice {
-		var userStruct = User{}
-
-		switch serializationMode {
-		case CustomSerializationMode:
-			var dErr error
-			userStruct, dErr = deserializationFromCustom(u)
-			if dErr != nil {
-				fmt.Println("Can't deserialize user record to user struct", dErr)
-
-				return
-			}
-		case JsonSerializationMode:
-			if u[0] != '{' && u[len(u)-1] != '}' {
-				continue
-			}
-			uErr := json.Unmarshal([]byte(u), &userStruct)
-			if uErr != nil {
-				fmt.Println("Can't deserialize user record to user struct with json mode.", uErr)
-
-				return
-			}
-		}
-
-		userStorage = append(userStorage, userStruct)
-	}
+	userStorage = append(userStorage, users...)
 }
 
-func writeUserToFile(user User) {
+func (f fileStore) writeUserToFile(user User) {
 	var file *os.File
 
-	file, err := os.OpenFile(userStoragePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(f.filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println("can't create or open file.", err)
 
@@ -383,4 +355,62 @@ func hashThePassword(password string) string {
 	hash := md5.Sum([]byte(password))
 
 	return hex.EncodeToString(hash[:])
+}
+
+type fileStore struct {
+	filePath string
+}
+
+func (f fileStore) Save(u User) {
+	f.writeUserToFile(u)
+}
+
+func (f fileStore) Load(serializationMode string) []User {
+	var uStore []User
+
+	file, err := os.Open(f.filePath)
+	if err != nil {
+		fmt.Println("can't open the file", err)
+	}
+
+	var data = make([]byte, 1024)
+	_, oErr := file.Read(data)
+	if oErr != nil {
+		fmt.Println("can't read from the file", oErr)
+
+		return nil
+	}
+
+	var dataStr = string(data)
+
+	userSlice := strings.Split(dataStr, "\n")
+
+	for _, u := range userSlice {
+		var userStruct = User{}
+
+		switch serializationMode {
+		case CustomSerializationMode:
+			var dErr error
+			userStruct, dErr = deserializationFromCustom(u)
+			if dErr != nil {
+				fmt.Println("Can't deserialize user record to user struct", dErr)
+
+				return nil
+			}
+		case JsonSerializationMode:
+			if u[0] != '{' && u[len(u)-1] != '}' {
+				continue
+			}
+			uErr := json.Unmarshal([]byte(u), &userStruct)
+			if uErr != nil {
+				fmt.Println("Can't deserialize user record to user struct with json mode.", uErr)
+
+				return nil
+			}
+		}
+
+		userStorage = append(userStorage, userStruct)
+	}
+
+	return uStore
 }
