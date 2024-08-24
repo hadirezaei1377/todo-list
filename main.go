@@ -11,29 +11,14 @@ import (
 	"todo-list/constant"
 	"todo-list/contract"
 	"todo-list/entity"
-	"todo-list/filestore"
+	"todo-list/repository/filestore"
+	"todo-list/repository/memorystore"
+	"todo-list/service/task"
 )
-
-type Task struct {
-	ID         int
-	Title      string
-	DueDate    string
-	CategoryID int
-	IsDone     bool
-	UserID     int
-}
-
-type Category struct {
-	ID     int
-	Title  string
-	Color  string
-	UserID int
-}
 
 var (
 	userStorage     []entity.User
-	categoryStorage []Category
-	taskStorage     []Task
+	categoryStorage []entity.Category
 
 	authenticatedUser *entity.User
 	serializationMode string
@@ -44,6 +29,10 @@ const (
 )
 
 func main() {
+	taskMemoryRepo := memorystore.NewTaskStore()
+
+	taskService := task.NewService(taskMemoryRepo)
+
 	serializeMode := flag.String("serialize-mode", constant.ManDarAvardiSerializationMode, "serialization mode to write data to file")
 	command := flag.String("command", "no-command", "command to run")
 	flag.Parse()
@@ -66,7 +55,7 @@ func main() {
 	// if there is a user record with corresponding data allow the user to continue
 
 	for {
-		runCommand(userFileStore, *command)
+		runCommand(userFileStore, *command, &taskService)
 
 		scanner := bufio.NewScanner(os.Stdin)
 		fmt.Println("please enter another command")
@@ -75,7 +64,7 @@ func main() {
 	}
 }
 
-func runCommand(store contract.UserWriteStore, command string) {
+func runCommand(store contract.UserWriteStore, command string, taskService *task.Service) {
 	if command != "register-user" && command != "exit" && authenticatedUser == nil {
 		login()
 
@@ -86,13 +75,13 @@ func runCommand(store contract.UserWriteStore, command string) {
 
 	switch command {
 	case "create-task":
-		createTask()
+		createTask(taskService)
 	case "create-category":
 		createCategory()
 	case "register-user":
 		registerUser(store)
 	case "list-task":
-		listTask()
+		listTask(taskService)
 	case "login":
 		login()
 	case "exit":
@@ -102,7 +91,7 @@ func runCommand(store contract.UserWriteStore, command string) {
 	}
 }
 
-func createTask() {
+func createTask(taskService *task.Service) {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	var title, duedate, category string
@@ -122,38 +111,24 @@ func createTask() {
 		return
 	}
 
-	isFound := false
-	for _, c := range categoryStorage {
-		if c.ID == categoryID && c.UserID == authenticatedUser.ID {
-			isFound = true
-
-			break
-		}
-	}
-
-	if !isFound {
-		fmt.Printf("category-id is not found\n")
-
-		return
-	}
-
 	fmt.Println("please enter the task due date")
 	scanner.Scan()
 	duedate = scanner.Text()
 
-	// validation
-	// category validate
+	response, err := taskService.Create(task.CreateRequest{
+		Title:               title,
+		DueDate:             duedate,
+		CategoryID:          categoryID,
+		AuthenticatedUserID: authenticatedUser.ID,
+	})
 
-	task := Task{
-		ID:         len(taskStorage) + 1,
-		Title:      title,
-		DueDate:    duedate,
-		CategoryID: categoryID,
-		IsDone:     false,
-		UserID:     authenticatedUser.ID,
+	if err != nil {
+		fmt.Println("error", err)
+
+		return
 	}
 
-	taskStorage = append(taskStorage, task)
+	fmt.Println("create task:", response.Task)
 }
 
 func createCategory() {
@@ -169,7 +144,7 @@ func createCategory() {
 	color = scanner.Text()
 	fmt.Println("category", title, color)
 
-	c := Category{
+	c := entity.Category{
 		ID:     len(categoryStorage) + 1,
 		Title:  title,
 		Color:  color,
@@ -237,12 +212,15 @@ func login() {
 	}
 }
 
-func listTask() {
-	for _, task := range taskStorage {
-		if task.UserID == authenticatedUser.ID {
-			fmt.Println(task)
-		}
+func listTask(taskService *task.Service) {
+	userTasks, err := taskService.List(task.ListRequest{UserID: authenticatedUser.ID})
+	if err != nil {
+		fmt.Println("error", err)
+
+		return
 	}
+
+	fmt.Println("user tasks", userTasks.Tasks)
 }
 
 func hashThePassword(password string) string {
