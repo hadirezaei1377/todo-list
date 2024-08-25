@@ -6,13 +6,17 @@ import (
 )
 
 type ServiceRepository interface {
-	//DoesThisUserHaveThisCategoryID(userID, categoryID int) bool
 	CreateNewTask(t entity.Task) (entity.Task, error)
 	ListUserTasks(userID int) ([]entity.Task, error)
 }
 
+type categoryService interface {
+	DoesThisUserHaveThisCategoryID(userID, categoryID int) bool
+}
+
 type Service struct {
-	repository ServiceRepository
+	repository      ServiceRepository
+	categoryService categoryService
 }
 
 func NewService(repo ServiceRepository) Service {

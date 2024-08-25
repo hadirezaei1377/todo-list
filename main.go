@@ -37,7 +37,7 @@ func main() {
 	command := flag.String("command", "no-command", "command to run")
 	flag.Parse()
 
-	fmt.Println("Hello to TODO app")
+	fmt.Println("Hello to TODO CLI app")
 
 	switch *serializeMode {
 	case constant.ManDarAvardiSerializationMode:
